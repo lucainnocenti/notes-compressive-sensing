@@ -1,0 +1,143 @@
+\documentclass[a4paper, twocolumn]{article}
+
+%% Language and font encodings
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+
+%% Sets page size and margins
+% \usepackage[a4paper,top=3cm,bottom=2cm,marginparwidth=1.75cm]{geometry}
+\usepackage[margin={2cm,2cm}]{geometry}
+
+%% Useful packages
+\usepackage{amsmath,amsfonts}
+\usepackage[autostyle]{csquotes}
+\usepackage{graphicx}
+%% bibliography packages and styling
+\usepackage[
+	backend=biber,
+    style=alphabetic,
+    doi=false, url=false
+]{biblatex}
+\addbibresource{sample.bib}
+
+\newbibmacro{string+doiurlisbn}[1]{%
+  \iffieldundef{doi}{%
+    \iffieldundef{url}{%
+      \iffieldundef{isbn}{%
+        \iffieldundef{issn}{%
+          #1%
+        }{%
+          \href{http://books.google.com/books?vid=ISSN\thefield{issn}}{#1}%
+        }%
+      }{%
+        \href{http://books.google.com/books?vid=ISBN\thefield{isbn}}{#1}%
+      }%
+    }{%
+      \href{\thefield{url}}{#1}%
+    }%
+  }{%
+    \href{http://dx.doi.org/\thefield{doi}}{#1}%
+  }%
+}
+
+\DeclareFieldFormat{title}{\usebibmacro{string+doiurlisbn}{\mkbibemph{#1}}}
+\DeclareFieldFormat[article,incollection]{title}%
+    {\usebibmacro{string+doiurlisbn}{\mkbibquote{#1}}}
+
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\usepackage{cleveref}
+
+\newcommand{\bs}[1]{{\boldsymbol{#1}}}
+\newcommand{\on}[1]{{\operatorname{#1}}}
+\DeclareMathOperator*{\argmin}{argmin}
+\DeclareMathOperator{\Ker}{Ker}
+\DeclareMathOperator{\Tr}{Tr}
+
+\title{Compressive sensing}
+\author{Luca Innocenti}
+
+\begin{document}
+\maketitle
+
+% \begin{abstract}
+% Your abstract.
+% \end{abstract}
+
+\section{Compressive Sensing}
+In a generic Compressive Sensing~\cite{donoho2006compressed, baraniuk2007compressive} problem, one is interested in reconstructing a real-valued, finite-length, one-dimensional signal $\bs x\in\mathbb R^N$, that is \textit{$K$-sparse}.
+By $K$-\textit{sparse} is here meant that $\bs x$ can be written as a linear combination of only $K$ base vectors: $\bs x = \sum_{i=1}^K \psi_i \bs s_i$.
+A signal is said to be \textit{compressible} if $K$ is low.
+The naive method of computing the compressed representation of the signal $\bs x$ is to acquire the full signal and then find its compressed representation via a change of basis.
+This is however not very efficient, and compressive sensing addresses this inefficiency by directly acquiring a compressed signal representation without going through the intermediate stage of acquiring $N$ signals.
+
+Consider then a general linear measurement process that computes $M<N$ inner products between $\bs x$ and a collection of vectors $\{\bs\phi_j\}_{j=1}^M$ as in $y_j = \langle\bs x, \bs\phi_j\rangle$:
+\begin{equation}
+	\boldsymbol y=\Phi\bs x
+    			 =\Phi\Psi\bs s, \quad \bs y\in\mathbb R^M.
+    \label{eq:cs_undercomplete_system}
+\end{equation}
+The measurement process considered here is not adaptive, meaning that $\Phi$ is fixed and does not depend on $\bs x$.
+The problem then consists of designing \textit{a)} a \textit{stable measurement matrix} $\Phi$ such that the salient information in any $K$-sparse or compressible signal is not damaged by the dimensionality reduction from $\bs x\in\mathbb R^N$ to $\bs y\in\mathbb R^M$,
+and \textit{b)} a reconstruction algorithm to actually recover $\bs x$ from only $M\approx K$ measurements $\bs y$.
+
+Retrieving $\bs x$ from $\bs y$ in \cref{eq:cs_undercomplete_system} may seem an ill-conditioned problem, being this a system of $M$ equations with $N>M$ unknown to determine.
+However, if $\bs x$ is $K$-sparse, then the problem can be solved provided that $M\ge K$.
+
+It turns out that a Gaussian measurement matrix $\Phi$ can be used to reliably recover the original signal, regardless of the sparsity basis.
+Reconstructing the signal $\bs x$ entails finding an $\bs s$ such that $\bs y=\Theta\bs s$, where $\Theta=\Phi\Psi$.
+There is however clearly not just one such $\bs s$, as $\Theta(\bs s+\bs r) = \bs y$ for any $\bs r\in\Ker\Phi$.
+The signal reconstruction algorithm therefore aims to find the signal's sparse coefficient vector in the $(N-M)$-dimensional translated null space $\mathcal H=\Ker(\Phi) + \bs s$.
+Different techniques can be used for the purpose.
+One may for example ask for the sparse representation with the smallest $\ell_2$ norm,
+that is, the solution of the following constrained optimization problem:
+\begin{equation}
+	\argmin\|\bs s\|_2, \quad \Theta\bs s=\bs y.
+\end{equation}
+While this optimization problem has the convenient closed-form solution
+$\bs s=\Theta^T (\Theta \Theta^T)^{-1} \bs y$,
+it turns out that the $\ell_2$ minimization almost never finds a $K$-sparse solution.
+Another possibility is to try instead with an $\ell_0$ minimization.
+This recovers a $K$-sparse signal with high probability with only $M=K+1$ Gaussian measurements, but is numerically unstable and an NP-complete problem.
+On the other hand, the $\ell_1$ minimization turns out to be the ideal one: it can exactly recover $K$-sparse signals with high probability using only
+$M \ge c K \log(N/K)$ IID Gaussian measurements,
+and is a convex optimization problem which conveniently reduces to a linear program whose computational complexity is known to be about $\mathcal O(N^3)$.
+
+\section{\texorpdfstring{\cite{gross2010quantum}}{Gross et al. (2010)}}
+One of the first works showing how CS techniques can be proficiently applied to problems in quantum mechanics, and in particular for the problem of quantum state tomography, was \cite{gross2010quantum}.
+The idea is to exploit the assumption that the state to be reconstructed is low-rank, that is, close to be pure (which is often the case given that one is usually interested in generating pure states), so that it is sparse in some basis.
+This is very powerful because, apart from the assumption of the state being close to pure, no other assumptions are required.
+The kind of quantum states to which this framework applies are many-qubit states.
+
+More precisely, the idea is to reconstruct an unknown state $\rho$ from the knowledge of the expectation values of $m$ independently drawn Pauli operators: $\Tr(w(A_i)\rho)$,
+with $A_i$ a random integer and $w(A_i)$ a corresponding Pauli operator.
+The way we do it is to look for a matrix $\sigma$ such that $\Tr\sigma=1$,
+$\Tr(w(A_i)\rho)=\Tr(w(A_i)\sigma)$ for all $i$,
+and, crucially, which minimizes $\|\sigma\|_{\on{tr}}$.
+The main result of the paper is that, if $m=cdr\log^2 d$ with $r$ the rank of $\rho$,
+then $\rho$ can be uniquely reconstructed solving the above convex optimization problem, with probability of failure exponentially small in $c$.
+
+\subsection{Proof}
+Consider the \textit{sampling operator} $\mathcal R$ defined as
+\begin{equation}
+	\mathcal R(\rho)\equiv \frac{d}{m}\sum_{k=1}^m w(A_k) \Tr(w(A_k)\rho),
+\end{equation}
+where $d=2^n$ is the dimension of the Hilbert space.
+It can be easily verified that $\mathbb E[\mathcal R(\rho)] = \rho$,
+where the expectation value is taken with respect to the possible realizations of the random measurements (that is, over the possible outcomes of the random numbers $A_k$).
+With this operator, the convex optimization problem can be recast as that of finding a state $\sigma$ such that $\sigma=\argmin_\sigma\|\sigma\|_{\on{tr}}$ and $\mathcal R\rho=\mathcal R\sigma$.
+
+For the solution to this problem to be unique, a sufficient condition is that for any deviation $\Delta\neq0$, either $\mathcal R\Delta\neq0$ or $\|\rho+\Delta\|_{\on{tr}}>\|\rho\|_{\on{tr}}$.
+In other words, that $\mathcal R\Delta=0$ implies $\|\rho+\Delta\|_{\on{tr}}>\|\rho\|_{\on{tr}}$.
+
+In \cite{riofrio2016experimental} is reported an experimental implementation of a CS technique to do tomography of a 7-qubit ion-trap system.
+
+\section{Related works}
+\begin{itemize}
+\item \cite{palangi2016distributed} try a deep learning approach to solve a CS problem.
+\item \cite{schneider2016deep} review some applications of ML to CS.
+\end{itemize}
+
+\printbibliography
+
+\end{document}
